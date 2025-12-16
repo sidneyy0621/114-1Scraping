@@ -115,6 +115,42 @@ def analyze_market_penetration():
     plt.savefig(os.path.join(output_dir, 'penetration_vs_revenue.jpg'), dpi=300, bbox_inches='tight')
     plt.close()
 
+    # 繪製高潛力開發區 Top 5 長條圖
+    plt.figure(figsize=(10, 6))
+    # 使用 Seaborn 繪製長條圖，顏色設為藍色系
+    sns.barplot(data=top_potential, x='平均營收', y='郵遞區號', color='#5b84b1')
+    plt.title('高潛力開發區 Top 5 (平均營收)', fontsize=14)
+    plt.xlabel('平均營收 ($)', fontsize=12)
+    plt.ylabel('郵遞區號', fontsize=12)
+    plt.grid(axis='x', linestyle='--', alpha=0.5)
+    
+    # 加上數值標籤
+    for i, v in enumerate(top_potential['平均營收']):
+        plt.text(v + 50, i, f"${v:,.0f}", va='center', fontsize=10)
+        
+    plt.savefig(os.path.join(output_dir, 'top5_potential_revenue_bar.jpg'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # 繪製高風險警示區 Top 5 長條圖
+    # 需先排序取出 Top 5 (流失率由高到低)
+    top_risk = high_risk.sort_values('流失率', ascending=False).head(5)
+    
+    plt.figure(figsize=(10, 6))
+    # 使用 Seaborn 繪製長條圖，顏色設為紅色系
+    sns.barplot(data=top_risk, x='流失率', y='郵遞區號', color='#d95f5f')
+    plt.title('高風險警示區 Top 5 (流失率)', fontsize=14)
+    plt.xlabel('流失率 (%)', fontsize=12)
+    plt.ylabel('郵遞區號', fontsize=12)
+    plt.xlim(0, 105) # 預留空間給標籤
+    plt.grid(axis='x', linestyle='--', alpha=0.5)
+    
+    # 加上數值標籤
+    for i, v in enumerate(top_risk['流失率']):
+        plt.text(v + 1, i, f"{v:.1f}%", va='center', fontsize=10)
+
+    plt.savefig(os.path.join(output_dir, 'top5_risk_churn_bar.jpg'), dpi=300, bbox_inches='tight')
+    plt.close()
+
     # [檔案4] 文字分析報告 (基於過濾後的有效數據)
     # 計算相關係數 (已在上方計算過，這裡直接使用)
     # corr_churn = filtered_df['滲透率'].corr(filtered_df['流失率'])
