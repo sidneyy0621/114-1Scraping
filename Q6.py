@@ -16,8 +16,12 @@ if not os.path.exists(output_dir):
 plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei', 'SimHei', 'Arial Unicode MS', 'sans-serif']
 plt.rcParams['axes.unicode_minus'] = False 
 
+# 定義常數
+AGE_ORDER = ['Young', 'Middle', 'Old']
+COLORS_DICT = {'Young': '#FF9999', 'Middle': '#66B2FF', 'Old': '#99FF99'}
+COLORS_LIST = ['#FF9999', '#66B2FF', '#99FF99', '#D3D3D3'] # Young, Middle, Old, Excluded
+
 # ================= 2. 資料讀取與前處理 =================
-print("讀取資料中...")
 try:
     df = pd.read_csv(input_file, encoding='utf-8')
 except UnicodeDecodeError:
@@ -38,20 +42,19 @@ binary_cols = ['電話服務', '多線路服務', '網路服務', '線上安全�
                '設備保護計劃', '技術支援計劃', '電視節目', '電影節目', '音樂節目', '無限資料下載']
 internet_types = ['Cable', 'Fiber Optic', 'DSL']
 
-# ================= 3. [新增圖表 1] 年齡分佈圖 (包含區間外) =================
-print("正在繪製年齡分佈圖...")
+# 預先過濾資料 (供後續分析使用)
+df_filtered = df.dropna(subset=['AgeGroup']).copy()
 
+# ================= 3. 年齡分佈圖 (包含區間外) =================
 # 準備繪圖數據 (將 None 填補為 '0-14 (Excluded)')
 age_counts = df['AgeGroup'].fillna('0-14 (Excluded)').value_counts()
 # 確保順序好看
-order = ['Young', 'Middle', 'Old', '0-14 (Excluded)']
+order = AGE_ORDER + ['0-14 (Excluded)']
 # 過濾掉不存在的 key (防止報錯)
 order = [o for o in order if o in age_counts.index]
 
 plt.figure(figsize=(10, 6))
-# 使用不同顏色凸顯分析對象 vs 排除對象
-colors = ['#FF9999', '#66B2FF', '#99FF99', '#D3D3D3'] # 紅藍綠+灰
-ax = sns.barplot(x=age_counts[order].index, y=age_counts[order].values, palette=colors)
+ax = sns.barplot(x=age_counts[order].index, y=age_counts[order].values, palette=COLORS_LIST)
 
 # 在柱狀圖上標示數值
 for i, v in enumerate(age_counts[order].values):
@@ -64,14 +67,10 @@ plt.grid(axis='y', linestyle='--', alpha=0.5)
 
 dist_path = os.path.join(output_dir, 'age_distribution.png')
 plt.savefig(dist_path, dpi=150)
-print(f"[成功] 年齡分佈圖已儲存: {dist_path}")
 
-# ================= 4. [新增圖表 2] 服務持有率熱力圖 (增加說服力) =================
-# 這張圖能展示「為什麼」會有這些規則 (例如：年輕人持有率高達90%的服務自然容易形成規則)
-
-print("正在繪製服務持有率熱力圖...")
-# 過濾出要分析的三個族群
-df_heatmap = df.dropna(subset=['AgeGroup']).copy()
+# ================= 4. 服務持有率熱力圖 =================
+# 使用已過濾的資料
+df_heatmap = df_filtered.copy()
 
 # 將 Yes/No 轉換為 1/0 以計算平均值 (即持有率)
 for col in binary_cols:
@@ -80,7 +79,7 @@ for col in binary_cols:
 # 計算各族群的平均持有率
 penetration = df_heatmap.groupby('AgeGroup')[binary_cols].mean()
 # 調整列順序 (Index)
-penetration = penetration.reindex(['Young', 'Middle', 'Old'])
+penetration = penetration.reindex(AGE_ORDER)
 
 plt.figure(figsize=(12, 5))
 sns.heatmap(penetration, annot=True, fmt=".0%", cmap="YlGnBu", linewidths=.5, cbar_kws={'label': '持有率'})
@@ -91,11 +90,8 @@ plt.xticks(rotation=45, ha='right')
 
 heatmap_path = os.path.join(output_dir, 'service_penetration_heatmap.png')
 plt.savefig(heatmap_path, dpi=150, bbox_inches='tight')
-print(f"[成功] 服務熱力圖已儲存: {heatmap_path}")
 
-# ================= 4.1 [新增圖表 3] 服務持有率雷達圖 =================
-print("正在繪製服務持有率雷達圖...")
-
+# ================= 4.1 服務持有率雷達圖 =================
 # 準備數據 (使用簡稱以優化顯示)
 radar_data = penetration.copy()
 name_mapping = {
@@ -130,26 +126,23 @@ plt.yticks([0.2, 0.4, 0.6, 0.8, 1.0], ["20%", "40%", "60%", "80%", "100%"], colo
 plt.ylim(0, 1)
 
 # 繪製每個族群
-colors = {'Young': '#FF9999', 'Middle': '#66B2FF', 'Old': '#99FF99'}
-for group in ['Young', 'Middle', 'Old']:
+for group in AGE_ORDER:
     if group in radar_data.index:
         values = radar_data.loc[group].values.flatten().tolist()
         values += values[:1] # 閉合
         
-        ax.plot(angles, values, linewidth=2, linestyle='solid', label=group, color=colors[group], marker='o')
-        ax.fill(angles, values, color=colors[group], alpha=0.25)
+        ax.plot(angles, values, linewidth=2, linestyle='solid', label=group, color=COLORS_DICT[group], marker='o')
+        ax.fill(angles, values, color=COLORS_DICT[group], alpha=0.25)
 
 plt.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
 plt.title('各年齡層服務持有率雷達圖', size=20, y=1.08)
 
 radar_path = os.path.join(output_dir, 'service_penetration_radar.png')
 plt.savefig(radar_path, dpi=150, bbox_inches='tight')
-print(f"[成功] 雷達圖已儲存: {radar_path}")
 
-# ================= 5. 關聯規則分析 (維持 S 級邏輯) =================
+# ================= 5. 關聯規則分析 =================
 
-# 正式過濾資料
-df_filtered = df.dropna(subset=['AgeGroup'])
+# df_filtered 已經在前面定義過了
 all_rules_data = []
 summary_report = ["=== Q6 關聯規則分析摘要報告 (含圖表解讀建議) ===\n"]
 
@@ -163,19 +156,14 @@ def remove_redundant_rules(rules_df, tolerance=0.01):
         is_redundant = False
         for kept in final_rules:
             if abs(row['lift'] - kept['lift']) <= tolerance:
-                # 如果「已保留規則」的【前因 (If)】包含於「新規則」的【前因】中
-                # 且「已保留規則」的【後果 (Then)】包含於「新規則」的【後果】中
                 if kept['antecedents'].issubset(row['antecedents']) and kept['consequents'].issubset(row['consequents']):
-                    is_redundant = True # 標記為冗餘 (多餘的)
-                    break # 停止檢查，丟棄這條新規則
+                    is_redundant = True
+                    break
         if not is_redundant:
             final_rules.append(row)
     return pd.DataFrame(final_rules).drop(columns=['length'])
 
-age_groups = ['Young', 'Middle', 'Old']
-
-for group in age_groups:
-    print(f"\n正在分析族群: {group} ...")
+for group in AGE_ORDER:
     group_data = df_filtered[df_filtered['AgeGroup'] == group]
     if group_data.empty: continue
         
@@ -239,23 +227,20 @@ for group in age_groups:
 report_path = os.path.join(output_dir, 'analysis_summary_final.txt')
 with open(report_path, 'w', encoding='utf-8') as f:
     f.write("\n".join(summary_report))
-print(f"\n[成功] 文字報告已更新: {report_path}")
 
 # 輸出規則散佈圖
 if all_rules_data:
-    print("正在繪製規則散佈圖...")
     all_df = pd.concat(all_rules_data)
     fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
-    colors = {'Young': '#FF9999', 'Middle': '#66B2FF', 'Old': '#99FF99'}
     
-    for i, group in enumerate(age_groups):
+    for i, group in enumerate(AGE_ORDER):
         ax = axes[i]
         subset = all_df[all_df['Group'] == group]
         if not subset.empty:
             plot_data = subset.head(50)
             sns.scatterplot(
                 data=plot_data, x='support', y='lift', size='confidence', 
-                sizes=(50, 250), alpha=0.7, color=colors.get(group, 'gray'), ax=ax, legend=False
+                sizes=(50, 250), alpha=0.7, color=COLORS_DICT.get(group, 'gray'), ax=ax, legend=False
             )
             top = plot_data.iloc[0]
             ax.annotate('Top 1', xy=(top['support'], top['lift']), 
@@ -270,18 +255,13 @@ if all_rules_data:
     plt.tight_layout()
     plot_path = os.path.join(output_dir, 'rules_visualization_final.png')
     plt.savefig(plot_path, dpi=150)
-    print(f"[成功] 規則散佈圖已儲存: {plot_path}")
 
-    # ================= 6.1 [新增圖表 4] Top 5 關聯規則長條圖 (依 Lift 排序) =================
-    print("正在繪製 Top 5 關聯規則長條圖...")
-    
+    # ================= 6.1 Top 5 關聯規則長條圖 (依 Lift 排序) =================
     # 設定圖表大小 (3個子圖，垂直排列)
     fig, axes = plt.subplots(3, 1, figsize=(12, 18))
-    if len(age_groups) == 1: axes = [axes] # 防呆
+    if len(AGE_ORDER) == 1: axes = [axes] # 防呆
     
-    colors = {'Young': '#FF9999', 'Middle': '#66B2FF', 'Old': '#99FF99'}
-
-    for i, group in enumerate(age_groups):
+    for i, group in enumerate(AGE_ORDER):
         ax = axes[i]
         # 找出該族群的規則資料
         group_rules = next((df for df in all_rules_data if not df.empty and df['Group'].iloc[0] == group), pd.DataFrame())
@@ -300,7 +280,7 @@ if all_rules_data:
             
             # 繪製水平長條圖
             y_pos = np.arange(len(labels))
-            ax.barh(y_pos, top_5_rules['lift'], color=colors.get(group, 'gray'), alpha=0.8)
+            ax.barh(y_pos, top_5_rules['lift'], color=COLORS_DICT.get(group, 'gray'), alpha=0.8)
             ax.set_yticks(y_pos)
             ax.set_yticklabels(labels, fontsize=12)
             ax.invert_yaxis()  # 讓最高的在上面
@@ -322,6 +302,3 @@ if all_rules_data:
     plt.tight_layout()
     bar_chart_path = os.path.join(output_dir, 'top5_rules_barchart.png')
     plt.savefig(bar_chart_path, dpi=150)
-    print(f"[成功] Top 5 規則長條圖已儲存: {bar_chart_path}")
-
-print("\n=== 所有作業完成，請檢查 output 資料夾 ===")
