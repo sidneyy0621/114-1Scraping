@@ -13,7 +13,7 @@ plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 def main():
-    # 1. 讀取資料
+    # 讀取資料
     # Get the directory where the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, 'Customer Data', 'new_customer_data.csv')
@@ -28,7 +28,7 @@ def main():
 
     df = pd.read_csv(file_path)
     
-    # 2. 地理位置分群 (K-Means)
+    # 地理位置分群 (K-Means)
     # 使用 緯度, 經度
     X = df[['緯度', '經度']]
     
@@ -79,17 +79,12 @@ def main():
     except Exception as e:
         pass
     
-    # 3. 比較不同群組特徵
+    # 比較不同群組特徵
     # 特徵: 性別, 年齡, 婚姻, 扶養人數
     
     # 數值型特徵平均值 (年齡, 扶養人數)
     numeric_cols = ['年齡', '扶養人數', '每月費用', '總費用', '推薦次數', '平均下載量( GB)']
     
-    # 類別型特徵分佈 (性別, 婚姻)
-    # for col in ['性別', '婚姻']:
-    #     print(f"\n{col} 分佈 (百分比):")
-    #     print(pd.crosstab(df['Cluster'], df[col], normalize='index') * 100)
-
     # 匯出群組特徵分析報告
     stats_numeric = df.groupby('Cluster')[numeric_cols].mean()
     
@@ -114,12 +109,12 @@ def main():
     output_profile_path = os.path.join(output_dir, 'Q5_cluster_profile.csv')
     final_cluster_stats.to_csv(output_profile_path, encoding='utf-8-sig')
 
-    # --- 加分題：視覺化群組特徵 (流失率、下載量、合約類型、推薦次數) ---
+    # --- 視覺化群組特徵 (流失率、下載量、合約類型、推薦次數) ---
     
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     plt.subplots_adjust(hspace=0.4, wspace=0.3)
     
-    # 1. 流失率比較
+    # 流失率比較
     churn_rate = df.groupby('Cluster')['客戶狀態'].apply(lambda x: (x == 'Churned').mean() * 100)
     sns.barplot(x=churn_rate.index, y=churn_rate.values, ax=axes[0, 0], palette='viridis', hue=churn_rate.index, legend=False)
     axes[0, 0].set_title('流失率比較')
@@ -128,7 +123,7 @@ def main():
     for i, v in enumerate(churn_rate):
         axes[0, 0].text(i, v + 0.5, f'{v:.1f}%', ha='center')
 
-    # 2. 平均下載量比較
+    # 平均下載量比較
     avg_download = df.groupby('Cluster')['平均下載量( GB)'].mean()
     sns.barplot(x=avg_download.index, y=avg_download.values, ax=axes[0, 1], palette='viridis', hue=avg_download.index, legend=False)
     axes[0, 1].set_title('平均下載量比較')
@@ -137,7 +132,7 @@ def main():
     for i, v in enumerate(avg_download):
         axes[0, 1].text(i, v + 0.5, f'{v:.1f}', ha='center')
 
-    # 3. 平均推薦次數比較
+    # 平均推薦次數比較
     avg_referrals = df.groupby('Cluster')['推薦次數'].mean()
     sns.barplot(x=avg_referrals.index, y=avg_referrals.values, ax=axes[1, 0], palette='viridis', hue=avg_referrals.index, legend=False)
     axes[1, 0].set_title('平均推薦次數比較')
@@ -146,7 +141,7 @@ def main():
     for i, v in enumerate(avg_referrals):
         axes[1, 0].text(i, v + 0.1, f'{v:.1f}', ha='center')
 
-    # 4. 合約類型分布 (堆疊長條圖)
+    # 合約類型分布 (堆疊長條圖)
     contract_dist = pd.crosstab(df['Cluster'], df['合約類型'], normalize='index') * 100
     contract_dist.plot(kind='bar', stacked=True, ax=axes[1, 1], colormap='viridis')
     axes[1, 1].set_title('合約類型分布')
@@ -159,7 +154,7 @@ def main():
     plt.savefig(output_comparison_path, bbox_inches='tight')
     plt.close()
 
-    # --- 加分題 1: 手肘法 (Elbow Method) 驗證 k=5 的合理性 ---
+    # --- 手肘法 (Elbow Method) 驗證 k=5 的合理性 ---
     inertia = []
     K_range = range(1, 11)
     for k in K_range:
@@ -181,7 +176,7 @@ def main():
     plt.savefig(output_elbow_path)
     plt.close()
 
-    # 4. 針對其中一群組建立關聯規則
+    # 針對其中一群組建立關聯規則
     target_cluster = 0
     
     cluster_df = df[df['Cluster'] == target_cluster].copy()
@@ -229,9 +224,6 @@ def main():
         rules = rules[rules['lift'] > 1.0]
         
         if not rules.empty:
-            # 顯示前 10 條規則，按 lift 排序
-            # print(rules.sort_values('lift', ascending=False).head(10)[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
-            
             # 清理 frozenset 格式並重新命名欄位
             def clean_set_str(x):
                 return ', '.join(list(x))
@@ -265,7 +257,7 @@ def main():
             plt.savefig(output_scatter_path)
             plt.close()
 
-            # --- 加分題：Top 5 精選商業規則長條圖 (手動挑選具代表性規則) ---
+            # --- Top 5 精選商業規則長條圖 (手動挑選具代表性規則) ---
             
             # 定義我們想要找的規則 (前項 -> 後項)
             target_rules_spec = [
@@ -295,9 +287,7 @@ def main():
                         })
                         found = True
                         break
-                # if not found:
-                #     print(f"Warning: 未找到規則 {target_ant} -> {target_con}")
-            
+
             # 轉為 DataFrame
             if selected_rules:
                 top_5_rules = pd.DataFrame(selected_rules)
