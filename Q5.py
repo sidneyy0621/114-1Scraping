@@ -42,8 +42,6 @@ def main():
     # 使用標準化後的資料進行分群
     df['Cluster'] = kmeans.fit_predict(X_scaled)
     
-    print(f"已將顧客分為 {n_clusters} 群 (Cluster 0 to {n_clusters-1})")
-    
     # 繪製分群結果
     plt.figure(figsize=(10, 6))
     
@@ -68,7 +66,6 @@ def main():
     output_plot_path = os.path.join(output_dir, 'Q5_geo_clusters.png')
     plt.savefig(output_plot_path)
     plt.close()
-    print(f"分群圖表已儲存至 {output_plot_path}")
 
     # 互動式地圖 (Plotly)
     try:
@@ -79,22 +76,19 @@ def main():
                                 title="顧客地理位置分群 (Interactive Map)")
         output_html_path = os.path.join(output_dir, 'Q5_geo_clusters_interactive.html')
         fig.write_html(output_html_path)
-        print(f"互動式地圖已儲存至 {output_html_path}")
     except Exception as e:
-        print(f"無法建立互動式地圖 (可能是缺少 plotly 套件): {e}")
+        pass
     
     # 3. 比較不同群組特徵
     # 特徵: 性別, 年齡, 婚姻, 扶養人數
-    print("\n--- 各群組特徵比較 ---")
     
     # 數值型特徵平均值 (年齡, 扶養人數)
     numeric_cols = ['年齡', '扶養人數', '每月費用', '總費用', '推薦次數', '平均下載量( GB)']
-    print(df.groupby('Cluster')[numeric_cols].mean())
     
     # 類別型特徵分佈 (性別, 婚姻)
-    for col in ['性別', '婚姻']:
-        print(f"\n{col} 分佈 (百分比):")
-        print(pd.crosstab(df['Cluster'], df[col], normalize='index') * 100)
+    # for col in ['性別', '婚姻']:
+    #     print(f"\n{col} 分佈 (百分比):")
+    #     print(pd.crosstab(df['Cluster'], df[col], normalize='index') * 100)
 
     # 匯出群組特徵分析報告
     stats_numeric = df.groupby('Cluster')[numeric_cols].mean()
@@ -119,10 +113,8 @@ def main():
     final_cluster_stats = pd.concat([stats_numeric, stats_gender, stats_marriage, stats_churn, stats_contract], axis=1)
     output_profile_path = os.path.join(output_dir, 'Q5_cluster_profile.csv')
     final_cluster_stats.to_csv(output_profile_path, encoding='utf-8-sig')
-    print(f"群組特徵分析已儲存至 {output_profile_path}")
 
     # --- 加分題：視覺化群組特徵 (流失率、下載量、合約類型、推薦次數) ---
-    print("正在繪製群組特徵比較圖 (流失率、下載量、合約類型、推薦次數)...")
     
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))
     plt.subplots_adjust(hspace=0.4, wspace=0.3)
@@ -166,10 +158,8 @@ def main():
     output_comparison_path = os.path.join(output_dir, 'Q5_cluster_comparison_advanced.png')
     plt.savefig(output_comparison_path, bbox_inches='tight')
     plt.close()
-    print(f"進階群組比較圖已儲存至 {output_comparison_path}")
 
     # --- 加分題 1: 手肘法 (Elbow Method) 驗證 k=5 的合理性 ---
-    print("正在繪製手肘法圖表...")
     inertia = []
     K_range = range(1, 11)
     for k in K_range:
@@ -190,11 +180,9 @@ def main():
     output_elbow_path = os.path.join(output_dir, 'Q5_elbow_method_proof.png')
     plt.savefig(output_elbow_path)
     plt.close()
-    print(f"Elbow Method 圖表已儲存至 {output_elbow_path}")
 
     # 4. 針對其中一群組建立關聯規則
     target_cluster = 0
-    print(f"\n--- 針對 Cluster {target_cluster} 建立關聯規則 ---")
     
     cluster_df = df[df['Cluster'] == target_cluster].copy()
     
@@ -231,22 +219,18 @@ def main():
     
     # 如果找不到規則，嘗試降低 min_support
     if frequent_itemsets.empty:
-        print(f"未找到頻繁項目集 (min_support={min_support})，嘗試降低至 0.05...")
         min_support = 0.05
         frequent_itemsets = apriori(df_trans, min_support=min_support, use_colnames=True)
 
-    if frequent_itemsets.empty:
-        print(f"仍未找到頻繁項目集 (min_support={min_support})")
-    else:
+    if not frequent_itemsets.empty:
         rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.6)
         
         # 額外篩選 Lift > 1.0 的規則 (確保正相關)
         rules = rules[rules['lift'] > 1.0]
         
-        print(f"找到 {len(rules)} 條規則 (min_support={min_support}, min_confidence=0.6, lift>1.0)")
         if not rules.empty:
             # 顯示前 10 條規則，按 lift 排序
-            print(rules.sort_values('lift', ascending=False).head(10)[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+            # print(rules.sort_values('lift', ascending=False).head(10)[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
             
             # 清理 frozenset 格式並重新命名欄位
             def clean_set_str(x):
@@ -266,7 +250,6 @@ def main():
             # 儲存規則到檔案
             output_rules_path = os.path.join(output_dir, 'Q5_association_rules_cleaned.csv')
             rules.to_csv(output_rules_path, index=False, encoding='utf-8-sig')
-            print(f"關聯規則已儲存至 {output_rules_path}")
 
             # 繪製關聯規則散佈圖 (Support vs Confidence, color=Lift)
             plt.figure(figsize=(10, 6))
@@ -281,10 +264,8 @@ def main():
             output_scatter_path = os.path.join(output_dir, 'Q5_association_rules_scatter.png')
             plt.savefig(output_scatter_path)
             plt.close()
-            print(f"關聯規則散佈圖已儲存至 {output_scatter_path}")
 
             # --- 加分題：Top 5 精選商業規則長條圖 (手動挑選具代表性規則) ---
-            print("正在繪製 Top 5 精選商業規則長條圖...")
             
             # 定義我們想要找的規則 (前項 -> 後項)
             target_rules_spec = [
@@ -314,15 +295,14 @@ def main():
                         })
                         found = True
                         break
-                if not found:
-                    print(f"Warning: 未找到規則 {target_ant} -> {target_con}")
+                # if not found:
+                #     print(f"Warning: 未找到規則 {target_ant} -> {target_con}")
             
             # 轉為 DataFrame
             if selected_rules:
                 top_5_rules = pd.DataFrame(selected_rules)
             else:
                 # 如果找不到(防呆)，還是退回用 Lift 排序
-                print("未找到指定規則，改用 Lift 排序...")
                 top_5_rules = rules.sort_values(by='提升度', ascending=False).head(5)
                 top_5_rules['rule'] = top_5_rules.apply(lambda x: f"若 [{x['前項(購買A)']}] \n-> 推薦 [{x['後項(購買B)']}]", axis=1)
                 top_5_rules['lift'] = top_5_rules['提升度']
@@ -347,7 +327,6 @@ def main():
             output_bar_path = os.path.join(output_dir, 'Q5_top5_rules_barchart.png')
             plt.savefig(output_bar_path, bbox_inches='tight')
             plt.close()
-            print(f"Top 5 精選規則長條圖已儲存至 {output_bar_path}")
 
 if __name__ == "__main__":
     main()
