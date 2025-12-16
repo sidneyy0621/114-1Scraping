@@ -38,7 +38,7 @@ def main():
 
     # 決定群數，這裡設為 5
     n_clusters = 5
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10) #紅色叉叉(質心)
     # 使用標準化後的資料進行分群
     df['Cluster'] = kmeans.fit_predict(X_scaled)
     
